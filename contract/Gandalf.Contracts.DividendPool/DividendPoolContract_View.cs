@@ -1,9 +1,8 @@
 using System;
-using System.Collections;
+using System.Linq;
 using AElf.CSharp.Core;
 using AElf.Types;
 using Gandalf.Contracts.DividendPool;
-using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Gandalf.Contracts.DividendPoolContract
@@ -55,6 +54,28 @@ namespace Gandalf.Contracts.DividendPoolContract
                 }
             }
             return pendingOutput;
+        }
+        
+        /**
+         * GetTokenListLength
+         */
+        public override Int32Value GetTokenListLength(Empty input)
+        {
+            return new Int32Value
+            {
+                Value = State.TokenList.Value.Tokens.Count
+            };
+        }
+        
+        /**
+         * IsTokenList
+         */
+        public override BoolValue IsTokenList(Token input)
+        {
+            return new BoolValue
+            {
+                Value = State.TokenList.Value.Tokens.Contains(input.TokenSymbol)
+            };
         }
 
         private BigIntValue GetUserReward(PoolInfoStruct pool,

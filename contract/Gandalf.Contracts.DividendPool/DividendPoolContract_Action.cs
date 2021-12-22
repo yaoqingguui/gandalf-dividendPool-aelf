@@ -1,6 +1,7 @@
 using System;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
+using AElf.Sdk.CSharp;
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
 using Gandalf.Contracts.DividendPool;
@@ -202,6 +203,88 @@ namespace Gandalf.Contracts.DividendPoolContract
 
             State.PoolInfo.Value.PoolList[input.Pid] = pool;
             State.UserInfo[input.Pid][Context.Sender] = user;
+            Context.Fire(new Deposit
+            {
+                Pid = input.Pid,
+                Amount = input.Amount,
+                User = Context.Sender
+            });
+            return new Empty();
+        }
+        
+        /**
+         *  Withdraw
+         * @Decription: withdraw lp token.
+         */
+        public override Empty Withdraw(TokenOptionInput input)
+        {   
+            Assert(input != null, "Invalid paramter.");
+            var pool = State.PoolInfo.Value.PoolList[input.Pid];
+            var user = State.UserInfo[input.Pid][Context.Sender];
+            Assert(user.Amount>=input.Amount,"Withdraw: insufficient balance");
+            UpdatePool(input.Pid);
+            if (user.Amount>0)
+            {
+                var tokenList = State.TokenList.Value.Tokens;
+                for (int i = 0; i < tokenList.Count; i++)
+                {
+                    var token = tokenList[i];
+                    var tokenMultiplier = GetMultiplier(token);
+                    var pendingAmount = user.Amount
+                        .Mul(pool.AccPerShare[token])
+                        .Div(tokenMultiplier)
+                        .Sub(user.RewardDebt[token]);
+
+                    if (pendingAmount > 0)
+                    {
+                        if (pool.LpToken.Equals(token))
+                        {
+                            SafeTransfer(Context.Sender,pendingAmount,token,pool.TotalAmount);
+                        }
+                        else
+                        {
+                            SafeTransfer(Context.Sender,pendingAmount,token,new BigIntValue(0));
+                        }
+                    }
+
+                    user.RewardDebt[token] = user.Amount
+                        .Sub(input.Amount)
+                        .Mul(pool.AccPerShare[token])
+                        .Div(tokenMultiplier);
+                }
+            }
+            
+            if (input.Amount > 0)
+            {
+                user.Amount = user.Amount.Sub(input.Amount);
+                pool.TotalAmount = pool.TotalAmount.Sub(input.Amount);
+                State.TokenContract.Transfer.Send(new TransferInput
+                {
+                    Symbol = pool.LpToken,
+                    Amount = Convert.ToInt64(input.Amount.ToString()),
+                    To = Context.Sender
+                });
+            }
+            
+            Context.Fire(new Withdraw
+            {
+                Amount = input.Amount,
+                Pid = input.Pid,
+                User = Context.Sender
+            });
+            return new Empty();
+        }
+        
+        /**
+         * MassUpdatePools
+         */
+        public override Empty MassUpdatePools(Empty input)
+        {
+            var length = State.PoolInfo.Value.PoolList.Count;
+            for (int pid = 0; pid < length; pid++)
+            {
+                UpdatePool(pid);
+            }
             return new Empty();
         }
 
