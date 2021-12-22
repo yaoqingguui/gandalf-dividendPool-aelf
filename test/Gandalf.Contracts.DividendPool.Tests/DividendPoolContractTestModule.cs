@@ -20,7 +20,7 @@ namespace Gandalf.Contracts.DividendPool
         public override void OnPreApplicationInitialization(ApplicationInitializationContext context)
         {
             var contractCodeProvider = context.ServiceProvider.GetService<IContractCodeProvider>();
-            var contractDllLocation = typeof(DividendPoolContract).Assembly.Location;
+            var contractDllLocation = typeof(Contracts.DividendPoolContract.DividendPoolContract).Assembly.Location;
             var contractCodes = new Dictionary<string, byte[]>(contractCodeProvider.Codes)
             {
                 {

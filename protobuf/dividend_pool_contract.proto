@@ -30,7 +30,7 @@ service DividendPoolContract {
     option (aelf.csharp_state) = "Gandalf.Contracts.DividendPool.DividendPoolContractState";
 
     // Action
-    rpc Initialize(google.protobuf.Int32Value) returns(google.protobuf.Empty){
+    rpc Initialize(InitializeInput) returns(google.protobuf.Empty){
     }
 
     rpc AddToken(Token) returns (google.protobuf.Empty){}
@@ -71,6 +71,11 @@ service DividendPoolContract {
 
 }
 
+message InitializeInput{
+    int32 cycle =1;
+    aelf.Address owner = 2;
+}
+
 message TokenOptionInput{
     int32 pid = 1;
     aelf.BigIntValue amount = 2;
@@ -87,24 +92,25 @@ message PendingInput{
 }
 
 message Token{
-    aelf.Address token_symbol = 1;
+    string token_symbol = 1;
 }
 
 message NewRewardInput{
     repeated string tokens = 1;
     repeated aelf.BigIntValue per_blocks = 2;
     repeated aelf.BigIntValue amounts = 3;
+    int64 start_block = 4;
 }
 
 message AddTokenInput{
-    aelf.BigIntValue allocation_point = 1;
+    int64 allocation_point = 1;
     string token_symbol = 2;
     bool with_update = 3;
 }
 
 message SetPoolInput{
     int32 pid = 1;
-    aelf.BigIntValue allocation_point = 2;
+    int64 allocation_point = 2;
     bool with_update = 3;
 }
 
@@ -137,10 +143,10 @@ message PoolInfoStruct{
     map<string,int64> acc_per_share =5;
 }
 
-message AddressList{
-    repeated aelf.Address address_list= 1;
+message TokenList{
+    repeated string tokens=1;
 }
 
 message PoolInfo{
-    repeated PoolInfoStruct pool_info = 1;
+    repeated PoolInfoStruct pool_list = 1;
 }

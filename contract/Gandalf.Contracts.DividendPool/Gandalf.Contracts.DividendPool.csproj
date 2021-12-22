@@ -18,4 +18,11 @@
             <Link>Protobuf\Proto\dividend_pool_contract.proto</Link>
         </ContractCode>
     </ItemGroup>
+
+    <ItemGroup>
+        <ContractReference Include="..\..\protobuf\token_contract.proto">
+            <Link>Protobuf\Proto\reference\token_contract.proto</Link>
+        </ContractReference>
+    </ItemGroup>
+    
 </Project>

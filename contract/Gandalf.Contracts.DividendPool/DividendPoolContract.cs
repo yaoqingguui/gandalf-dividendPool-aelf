@@ -1,5 +1,9 @@
+using AElf;
+using AElf.Sdk.CSharp.State;
+using Gandalf.Contracts.DividendPool;
+using Google.Protobuf.WellKnownTypes;
 
-namespace Gandalf.Contracts.DividendPool
+namespace Gandalf.Contracts.DividendPoolContract
 {
     /// <summary>
     /// The C# implementation of the contract defined in dividend_pool_contract.proto that is located in the "protobuf"
@@ -8,6 +12,16 @@ namespace Gandalf.Contracts.DividendPool
     /// </summary>
     public partial class DividendPoolContract : DividendPoolContractContainer.DividendPoolContractBase
     {
-       
+        public override Empty Initialize(InitializeInput input)
+        {
+            Assert(State.Owner.Value==null,"Already initialized.");
+            State.Owner.Value = input.Owner == null || input.Owner.Value.IsNullOrEmpty() ? Context.Sender : input.Owner;
+            State.Cycle.Value = new Int64State
+            {
+                Value = input.Cycle
+            };
+            State.TokenList.Value = new TokenList();
+            return new Empty();
+        }
     }
 }
