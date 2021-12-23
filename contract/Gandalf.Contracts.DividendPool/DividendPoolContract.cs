@@ -1,6 +1,6 @@
 using AElf;
+using AElf.Sdk.CSharp;
 using AElf.Sdk.CSharp.State;
-using Gandalf.Contracts.DividendPool;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Gandalf.Contracts.DividendPoolContract
@@ -20,6 +20,10 @@ namespace Gandalf.Contracts.DividendPoolContract
             {
                 Value = input.Cycle
             };
+            Context.Fire(new SetCycle
+            {
+                Cycle = input.Cycle
+            });
             State.TokenList.Value = new TokenList();
             return new Empty();
         }

@@ -12,4 +12,8 @@
         <PackageReference Include="AElf.Kernel.SmartContract" Version="1.0.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="obj\Debug\netcoreapp3.1\AElf.Boilerplate.SystemTransactionGenerator.csproj.AssemblyReference.cache" />
+    </ItemGroup>
+
 </Project>

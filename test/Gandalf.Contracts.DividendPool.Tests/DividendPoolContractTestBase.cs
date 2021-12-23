@@ -1,5 +1,6 @@
 using AElf.Boilerplate.TestBase;
 using AElf.Cryptography.ECDSA;
+using Gandalf.Contracts.DividendPoolContract;
 
 namespace Gandalf.Contracts.DividendPool
 {

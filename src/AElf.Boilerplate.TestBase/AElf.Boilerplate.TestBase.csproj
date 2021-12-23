@@ -129,5 +129,8 @@
             <Link>Protobuf\Proto\profit_contract.proto</Link>
         </ContractStub>
     </ItemGroup>
+    <ItemGroup>
+      <Folder Include="obj\Debug\netcoreapp3.1" />
+    </ItemGroup>
 
 </Project>

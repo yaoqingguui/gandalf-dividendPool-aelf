@@ -1,7 +1,7 @@
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
 
-namespace Gandalf.Contracts.DividendPool
+namespace Gandalf.Contracts.DividendPoolContract
 {
     /// <summary>
     /// The state class of the contract, it inherits from the AElf.Sdk.CSharp.State.ContractState type. 
@@ -20,5 +20,8 @@ namespace Gandalf.Contracts.DividendPool
         public SingletonState<Int64State> EndBlock { get; set; }
         public SingletonState<Int64State> Cycle { get; set; }
         
+        // Pid=> UserAddress => token=> debt
+        public MappedState<long, Address, string, BigIntValue> RewardDebt;
+        public MappedState<long, string, BigIntValue> AccPerShare;
     }
 }

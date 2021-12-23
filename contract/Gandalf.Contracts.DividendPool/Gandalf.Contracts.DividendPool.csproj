@@ -24,5 +24,9 @@
             <Link>Protobuf\Proto\reference\token_contract.proto</Link>
         </ContractReference>
     </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="obj\Debug\netstandard2.0\Gandalf.Contracts.DividendPool.csproj.AssemblyReference.cache" />
+    </ItemGroup>
     
 </Project>

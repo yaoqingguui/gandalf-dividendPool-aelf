@@ -4,7 +4,6 @@ using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
-using Gandalf.Contracts.DividendPool;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Gandalf.Contracts.DividendPoolContract
@@ -21,6 +20,11 @@ namespace Gandalf.Contracts.DividendPoolContract
             var tokenList = State.TokenList.Value;
             tokenList.Tokens.Add(input.TokenSymbol);
             State.TokenList.Value = tokenList;
+            Context.Fire(new AddToken
+            {
+                TokenSymbol = input.TokenSymbol,
+                Index = State.TokenList.Value.Tokens.Count.Mul(1)
+            });
             return new Empty();
         }
 
@@ -64,6 +68,14 @@ namespace Gandalf.Contracts.DividendPoolContract
                 }.Mul(perBlock) <= amount), "Balance not enough");
 
                 State.PerBlock[token] = perBlock;
+                Context.Fire(new NewReward
+                {
+                    Token = token,
+                    PerBlocks = perBlock,
+                    Amount = amount,
+                    StartBlock = input.StartBlock,
+                    EndBlock = input.StartBlock.Add(State.Cycle.Value.Value)
+                });
             }
 
             State.StartBlock.Value = new Int64State
@@ -86,6 +98,10 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             AssertSenderIsOwner();
             State.Cycle.Value.Value = input.Value;
+            Context.Fire(new SetCycle
+            {
+                Cycle = input.Value
+            });
             return new Empty();
         }
 
@@ -111,6 +127,13 @@ namespace Gandalf.Contracts.DividendPoolContract
                 LpToken = input.TokenSymbol,
                 AllocPoint = input.AllocationPoint,
                 TotalAmount = 0,
+                LastRewardBlock = lastRewadrBlock
+            });
+
+            Context.Fire(new AddPool
+            {
+                Token = input.TokenSymbol,
+                AllocPoint = input.AllocationPoint,
                 LastRewardBlock = lastRewadrBlock
             });
             return new Empty();
@@ -164,9 +187,9 @@ namespace Gandalf.Contracts.DividendPoolContract
                     var token = tokenList[i];
                     var tokenMultiplier = GetMultiplier(token);
                     var pendingAmount = user.Amount
-                        .Mul(pool.AccPerShare[token])
+                        .Mul(State.AccPerShare[input.Pid][token])
                         .Div(tokenMultiplier)
-                        .Sub(user.RewardDebt[token]);
+                        .Sub(State.RewardDebt[input.Pid][Context.Sender][token]);
 
                     if (pendingAmount > 0)
                     {
@@ -180,11 +203,10 @@ namespace Gandalf.Contracts.DividendPoolContract
                         }
                     }
 
-                    user.RewardDebt[token] = user.Amount
+                    State.RewardDebt[input.Pid][Context.Sender][token] = user.Amount
                         .Add(input.Amount)
-                        .Mul(pool.AccPerShare[token])
-                        .Div(tokenMultiplier);    
-
+                        .Mul(State.AccPerShare[input.Pid][token])
+                        .Div(tokenMultiplier);
                 }
             }
 
@@ -211,19 +233,19 @@ namespace Gandalf.Contracts.DividendPoolContract
             });
             return new Empty();
         }
-        
+
         /**
          *  Withdraw
          * @Decription: withdraw lp token.
          */
         public override Empty Withdraw(TokenOptionInput input)
-        {   
+        {
             Assert(input != null, "Invalid paramter.");
             var pool = State.PoolInfo.Value.PoolList[input.Pid];
             var user = State.UserInfo[input.Pid][Context.Sender];
-            Assert(user.Amount>=input.Amount,"Withdraw: insufficient balance");
+            Assert(user.Amount >= input.Amount, "Withdraw: insufficient balance");
             UpdatePool(input.Pid);
-            if (user.Amount>0)
+            if (user.Amount > 0)
             {
                 var tokenList = State.TokenList.Value.Tokens;
                 for (int i = 0; i < tokenList.Count; i++)
@@ -231,29 +253,29 @@ namespace Gandalf.Contracts.DividendPoolContract
                     var token = tokenList[i];
                     var tokenMultiplier = GetMultiplier(token);
                     var pendingAmount = user.Amount
-                        .Mul(pool.AccPerShare[token])
+                        .Mul(State.AccPerShare[input.Pid][token])
                         .Div(tokenMultiplier)
-                        .Sub(user.RewardDebt[token]);
+                        .Sub(State.RewardDebt[input.Pid][Context.Sender][token]);
 
                     if (pendingAmount > 0)
                     {
                         if (pool.LpToken.Equals(token))
                         {
-                            SafeTransfer(Context.Sender,pendingAmount,token,pool.TotalAmount);
+                            SafeTransfer(Context.Sender, pendingAmount, token, pool.TotalAmount);
                         }
                         else
                         {
-                            SafeTransfer(Context.Sender,pendingAmount,token,new BigIntValue(0));
+                            SafeTransfer(Context.Sender, pendingAmount, token, new BigIntValue(0));
                         }
                     }
 
-                    user.RewardDebt[token] = user.Amount
+                    State.RewardDebt[input.Pid][Context.Sender][token] = user.Amount
                         .Sub(input.Amount)
-                        .Mul(pool.AccPerShare[token])
+                        .Mul(State.AccPerShare[input.Pid][token])
                         .Div(tokenMultiplier);
                 }
             }
-            
+
             if (input.Amount > 0)
             {
                 user.Amount = user.Amount.Sub(input.Amount);
@@ -265,7 +287,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                     To = Context.Sender
                 });
             }
-            
+
             Context.Fire(new Withdraw
             {
                 Amount = input.Amount,
@@ -274,7 +296,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             });
             return new Empty();
         }
-        
+
         /**
          * MassUpdatePools
          */
@@ -285,6 +307,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             {
                 UpdatePool(pid);
             }
+
             return new Empty();
         }
 
@@ -346,7 +369,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                     .Div(State.TotalAllocPoint.Value);
 
                 var tokenMultiplier = GetMultiplier(token);
-                pool.AccPerShare[token] = pool.AccPerShare[token]
+                State.AccPerShare[pid][token] = State.AccPerShare[pid][token]
                     .Add(
                         Convert.ToInt64((reward.Mul(tokenMultiplier).Div(totalAmount)).ToString())
                     );
