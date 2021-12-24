@@ -32,7 +32,7 @@ namespace Gandalf.Contracts.DividendPoolContract
          *  NewReward
          */
         public override Empty NewReward(NewRewardInput input)
-        {
+        {   
             AssertSenderIsOwner();
             var endBlock = State.EndBlock.Value;
             Assert(endBlock != null, "Not config end block.");
@@ -115,6 +115,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 ? Context.CurrentHeight
                 : State.StartBlock.Value;
             State.TotalAllocPoint.Value = State.TotalAllocPoint.Value.Add(input.AllocationPoint);
+            var count = State.PoolInfo.Value.PoolList.Count;
             State.PoolInfo.Value.PoolList.Add(new PoolInfoStruct
             {
                 LpToken = input.TokenSymbol,
@@ -122,12 +123,13 @@ namespace Gandalf.Contracts.DividendPoolContract
                 TotalAmount = 0,
                 LastRewardBlock = lastRewadrBlock
             });
-
+            
             Context.Fire(new AddPool
             {
                 Token = input.TokenSymbol,
                 AllocPoint = input.AllocationPoint,
-                LastRewardBlock = lastRewadrBlock
+                LastRewardBlock = lastRewadrBlock,
+                Pid = count
             });
             return new Empty();
         }
@@ -186,14 +188,15 @@ namespace Gandalf.Contracts.DividendPoolContract
 
                     if (pendingAmount > 0)
                     {
-                        if (pool.LpToken.Equals(token))
+                        SafeTransfer(Context.Sender, pendingAmount, token,
+                            pool.LpToken.Equals(token) ? pool.TotalAmount : new BigIntValue(0));
+
+                        Context.Fire(new Harvest
                         {
-                            SafeTransfer(Context.Sender, pendingAmount, token, pool.TotalAmount);
-                        }
-                        else
-                        {
-                            SafeTransfer(Context.Sender, pendingAmount, token, new BigIntValue(0));
-                        }
+                            Amount = pendingAmount,
+                            To = Context.Sender,
+                            Token = token
+                        });
                     }
 
                     State.RewardDebt[input.Pid][Context.Sender][token] = user.Amount
@@ -252,14 +255,15 @@ namespace Gandalf.Contracts.DividendPoolContract
 
                     if (pendingAmount > 0)
                     {
-                        if (pool.LpToken.Equals(token))
+                        SafeTransfer(Context.Sender, pendingAmount, token,
+                            pool.LpToken.Equals(token) ? pool.TotalAmount : new BigIntValue(0));
+
+                        Context.Fire(new Harvest
                         {
-                            SafeTransfer(Context.Sender, pendingAmount, token, pool.TotalAmount);
-                        }
-                        else
-                        {
-                            SafeTransfer(Context.Sender, pendingAmount, token, new BigIntValue(0));
-                        }
+                            Amount = pendingAmount,
+                            To = Context.Sender,
+                            Token = token
+                        });
                     }
 
                     State.RewardDebt[input.Pid][Context.Sender][token] = user.Amount
@@ -366,6 +370,14 @@ namespace Gandalf.Contracts.DividendPoolContract
                     .Add(
                         Convert.ToInt64((reward.Mul(tokenMultiplier).Div(totalAmount)).ToString())
                     );
+                
+                Context.Fire(new UpdatePool
+                {
+                    Pid = pid,
+                    Reward = reward,
+                    Token = token,
+                    AccPerShare = State.AccPerShare[pid][token]
+                });
             }
 
             pool.LastRewardBlock = number;
