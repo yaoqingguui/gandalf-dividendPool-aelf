@@ -16,10 +16,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             Assert(State.Owner.Value==null,"Already initialized.");
             State.Owner.Value = input.Owner == null || input.Owner.Value.IsNullOrEmpty() ? Context.Sender : input.Owner;
-            State.Cycle.Value = new Int64State
-            {
-                Value = input.Cycle
-            };
+            State.Cycle.Value = input.Cycle;
             Context.Fire(new SetCycle
             {
                 Cycle = input.Cycle

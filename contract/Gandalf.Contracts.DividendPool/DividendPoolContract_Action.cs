@@ -36,7 +36,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             AssertSenderIsOwner();
             var endBlock = State.EndBlock.Value;
             Assert(endBlock != null, "Not config end block.");
-            Assert(Context.CurrentHeight > endBlock.Value && input.StartBlock > endBlock.Value, "Not finished");
+            Assert(Context.CurrentHeight > endBlock && input.StartBlock > endBlock, "Not finished");
             // todo -> massUpdatePools()
             var tokenLength = input.Tokens.Count;
             for (int i = 0; i < tokenLength; i++)
@@ -64,7 +64,7 @@ namespace Gandalf.Contracts.DividendPoolContract
 
                 Assert(amount > 0 && (new BigIntValue
                 {
-                    Value = State.Cycle.Value.Value.ToString()
+                    Value = State.Cycle.Value.ToString()
                 }.Mul(perBlock) <= amount), "Balance not enough");
 
                 State.PerBlock[token] = perBlock;
@@ -74,19 +74,12 @@ namespace Gandalf.Contracts.DividendPoolContract
                     PerBlocks = perBlock,
                     Amount = amount,
                     StartBlock = input.StartBlock,
-                    EndBlock = input.StartBlock.Add(State.Cycle.Value.Value)
+                    EndBlock = input.StartBlock.Add(State.Cycle.Value)
                 });
             }
 
-            State.StartBlock.Value = new Int64State
-            {
-                Value = input.StartBlock
-            };
-            State.EndBlock.Value = new Int64State
-            {
-                Value = input.StartBlock.Add(State.Cycle.Value.Value)
-            };
-
+            State.StartBlock.Value = input.StartBlock;
+            State.EndBlock.Value = input.StartBlock.Add(State.Cycle.Value);
             UpdatePoolLastRewardBlock(input.StartBlock);
             return new Empty();
         }
@@ -97,7 +90,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         public override Empty SetCycle(Int32Value input)
         {
             AssertSenderIsOwner();
-            State.Cycle.Value.Value = input.Value;
+            State.Cycle.Value = input.Value;
             Context.Fire(new SetCycle
             {
                 Cycle = input.Value
@@ -118,9 +111,9 @@ namespace Gandalf.Contracts.DividendPoolContract
                 // TODO MassUpdatePools();   
             }
 
-            var lastRewadrBlock = Context.CurrentHeight > State.StartBlock.Value.Value
+            var lastRewadrBlock = Context.CurrentHeight > State.StartBlock.Value
                 ? Context.CurrentHeight
-                : State.StartBlock.Value.Value;
+                : State.StartBlock.Value;
             State.TotalAllocPoint.Value = State.TotalAllocPoint.Value.Add(input.AllocationPoint);
             State.PoolInfo.Value.PoolList.Add(new PoolInfoStruct
             {
@@ -339,8 +332,8 @@ namespace Gandalf.Contracts.DividendPoolContract
         private Empty UpdatePool(int pid)
         {
             var pool = State.PoolInfo.Value.PoolList[pid];
-            var number = Context.CurrentHeight > State.EndBlock.Value.Value
-                ? State.EndBlock.Value.Value
+            var number = Context.CurrentHeight > State.EndBlock.Value
+                ? State.EndBlock.Value
                 : Context.CurrentHeight;
             if (number <= pool.LastRewardBlock)
             {

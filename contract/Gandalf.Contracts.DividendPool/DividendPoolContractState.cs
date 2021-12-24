@@ -15,10 +15,10 @@ namespace Gandalf.Contracts.DividendPoolContract
         public SingletonState<PoolInfo> PoolInfo { get; set; }
         // pid=>user=>userInfo
         public MappedState<int, Address, UserInfoStruct> UserInfo { get; set; }
-        public SingletonState<long> TotalAllocPoint { get; set; }
-        public SingletonState<Int64State> StartBlock { get; set; }
-        public SingletonState<Int64State> EndBlock { get; set; }
-        public SingletonState<Int64State> Cycle { get; set; }
+        public Int64State TotalAllocPoint { get; set; }
+        public Int64State StartBlock { get; set; }
+        public Int64State EndBlock { get; set; }
+        public Int64State Cycle { get; set; }
         
         // Pid=> UserAddress => token=> debt
         public MappedState<long, Address, string, BigIntValue> RewardDebt;

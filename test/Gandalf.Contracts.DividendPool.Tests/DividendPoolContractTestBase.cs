@@ -1,4 +1,5 @@
 using AElf.Boilerplate.TestBase;
+using AElf.Contracts.MultiToken;
 using AElf.Cryptography.ECDSA;
 using Gandalf.Contracts.DividendPoolContract;
 
@@ -13,5 +14,11 @@ namespace Gandalf.Contracts.DividendPool
         {
             return GetTester<DividendPoolContractContainer.DividendPoolContractStub>(DAppContractAddress, senderKeyPair);
         }
+        
+        internal TokenContractContainer.TokenContractStub GetTokenContractStub(ECKeyPair senderKeyPair)
+        {
+            return GetTester<TokenContractContainer.TokenContractStub>(TokenContractAddress, senderKeyPair);
+        }
+        
     }
 }

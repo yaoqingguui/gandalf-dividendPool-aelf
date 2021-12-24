@@ -30,8 +30,8 @@ namespace Gandalf.Contracts.DividendPoolContract
 
             var pendingOutput = new PendingOutput();
 
-            var number = Context.CurrentHeight > State.EndBlock.Value.Value
-                ? State.EndBlock.Value.Value
+            var number = Context.CurrentHeight > State.EndBlock.Value
+                ? State.EndBlock.Value
                 : Context.CurrentHeight;
             if (number > pool.LastRewardBlock && !pool.TotalAmount.Equals(0))
             {
@@ -139,7 +139,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return new Int64Value
             {
-                Value = State.StartBlock.Value.Value
+                Value = State.StartBlock.Value
             };
         }
         
@@ -150,7 +150,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return new Int64Value
             {
-                Value = State.EndBlock.Value.Value
+                Value = State.EndBlock.Value
             };
         }
         
@@ -161,7 +161,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return new Int64Value
             {
-                Value = State.Cycle.Value.Value
+                Value = State.Cycle.Value
             };
         }
         
