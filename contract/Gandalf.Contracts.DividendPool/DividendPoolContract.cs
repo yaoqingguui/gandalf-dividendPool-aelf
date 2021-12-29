@@ -21,7 +21,11 @@ namespace Gandalf.Contracts.DividendPoolContract
             {
                 Cycle = input.Cycle
             });
+
+            State.PoolInfo.Value = new PoolInfo();
             State.TokenList.Value = new TokenList();
+            State.TokenContract.Value =
+                Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);
             return new Empty();
         }
     }

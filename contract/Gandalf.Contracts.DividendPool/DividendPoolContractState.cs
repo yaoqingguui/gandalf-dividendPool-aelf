@@ -21,7 +21,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         public Int64State Cycle { get; set; }
         
         // Pid=> UserAddress => token=> debt
-        public MappedState<long, Address, string, BigIntValue> RewardDebt;
-        public MappedState<long, string, BigIntValue> AccPerShare;
+        public MappedState<long, Address, string, BigIntValue> RewardDebt { get; set; }
+        public MappedState<long, string, BigIntValue> AccPerShare { get; set; }
     }
 }

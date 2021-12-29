@@ -1,8 +1,8 @@
 using System;
+using System.Collections.Generic;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
-using AElf.Sdk.CSharp.State;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
@@ -18,8 +18,10 @@ namespace Gandalf.Contracts.DividendPoolContract
             AssertSenderIsOwner();
             Assert(input.TokenSymbol != null, "Invalid token symbol.");
             var tokenList = State.TokenList.Value;
+            Assert(!tokenList.Tokens.Contains(input.TokenSymbol),"Token has Added.");
             tokenList.Tokens.Add(input.TokenSymbol);
             State.TokenList.Value = tokenList;
+            State.PerBlock[input.TokenSymbol] = new BigIntValue(0);
             Context.Fire(new AddToken
             {
                 TokenSymbol = input.TokenSymbol,
@@ -32,7 +34,7 @@ namespace Gandalf.Contracts.DividendPoolContract
          *  NewReward
          */
         public override Empty NewReward(NewRewardInput input)
-        {   
+        {
             AssertSenderIsOwner();
             var endBlock = State.EndBlock.Value;
             Assert(endBlock != null, "Not config end block.");
@@ -102,13 +104,13 @@ namespace Gandalf.Contracts.DividendPoolContract
          * Add
          * @Description: Add a new lp to the pool. Can only be called by the owner.
          */
-        public override Empty Add(AddTokenInput input)
+        public override Empty Add(AddPoolInput input)
         {
             AssertSenderIsOwner();
             Assert(input.TokenSymbol != null, "Token can not be null.");
             if (input.WithUpdate)
             {
-                // TODO MassUpdatePools();   
+                MassUpdatePools(new Empty());
             }
 
             var lastRewadrBlock = Context.CurrentHeight > State.StartBlock.Value
@@ -123,7 +125,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 TotalAmount = 0,
                 LastRewardBlock = lastRewadrBlock
             });
-            
+
             Context.Fire(new AddPool
             {
                 Token = input.TokenSymbol,
@@ -172,7 +174,10 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             Assert(input != null, "Invalid paramter.");
             var pool = State.PoolInfo.Value.PoolList[input.Pid];
-            var user = State.UserInfo[input.Pid][Context.Sender];
+            var user = State.UserInfo[input.Pid][Context.Sender] ?? new UserInfoStruct
+            {
+                Amount = "0"
+            };
             UpdatePool(input.Pid);
             if (user.Amount >= 0)
             {
@@ -181,6 +186,11 @@ namespace Gandalf.Contracts.DividendPoolContract
                 {
                     var token = tokenList[i];
                     var tokenMultiplier = GetMultiplier(token);
+
+                    State.AccPerShare[input.Pid][token] = State.AccPerShare[input.Pid][token] ?? new BigIntValue(0);
+                    State.RewardDebt[input.Pid][Context.Sender][token] =
+                        State.RewardDebt[input.Pid][Context.Sender][token] ?? new BigIntValue(0);
+                    
                     var pendingAmount = user.Amount
                         .Mul(State.AccPerShare[input.Pid][token])
                         .Div(tokenMultiplier)
@@ -195,7 +205,8 @@ namespace Gandalf.Contracts.DividendPoolContract
                         {
                             Amount = pendingAmount,
                             To = Context.Sender,
-                            Token = token
+                            Token = token,
+                            Pid = input.Pid
                         });
                     }
 
@@ -213,8 +224,9 @@ namespace Gandalf.Contracts.DividendPoolContract
                     Symbol = pool.LpToken,
                     From = Context.Sender,
                     To = Context.Self,
-                    Amount = Convert.ToInt64(input.Amount.ToString())
+                    Amount = Convert.ToInt64(input.Amount.Value)
                 });
+                
                 user.Amount = user.Amount.Add(input.Amount);
                 pool.TotalAmount = pool.TotalAmount.Add(input.Amount);
             }
@@ -262,7 +274,8 @@ namespace Gandalf.Contracts.DividendPoolContract
                         {
                             Amount = pendingAmount,
                             To = Context.Sender,
-                            Token = token
+                            Token = token,
+                            Pid = input.Pid
                         });
                     }
 
@@ -280,7 +293,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 State.TokenContract.Transfer.Send(new TransferInput
                 {
                     Symbol = pool.LpToken,
-                    Amount = Convert.ToInt64(input.Amount.ToString()),
+                    Amount = Convert.ToInt64(input.Amount.Value),
                     To = Context.Sender
                 });
             }
@@ -320,14 +333,14 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Owner = Context.Self,
                 Symbol = token
             }).Balance;
-            tokenBalance = tokenBalance.Sub(Convert.ToInt64(poolAmount.ToString()));
+            tokenBalance = tokenBalance.Sub(Convert.ToInt64(poolAmount.Value));
 
             var realAmount = amount > tokenBalance ? tokenBalance : amount;
 
             State.TokenContract.Transfer.Send(new TransferInput
             {
                 To = to,
-                Amount = Convert.ToInt64(realAmount.ToString()),
+                Amount = Convert.ToInt64(realAmount.Value),
                 Symbol = token
             });
         }
@@ -365,12 +378,16 @@ namespace Gandalf.Contracts.DividendPoolContract
                     .Mul(pool.AllocPoint)
                     .Div(State.TotalAllocPoint.Value);
 
+                if (reward.Equals(0))
+                {
+                    continue;
+                }
                 var tokenMultiplier = GetMultiplier(token);
                 State.AccPerShare[pid][token] = State.AccPerShare[pid][token]
                     .Add(
-                        Convert.ToInt64((reward.Mul(tokenMultiplier).Div(totalAmount)).ToString())
+                        reward.Mul(tokenMultiplier).Div(totalAmount)
                     );
-                
+
                 Context.Fire(new UpdatePool
                 {
                     Pid = pid,

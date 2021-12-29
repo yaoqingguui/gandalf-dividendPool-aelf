@@ -17,10 +17,10 @@ namespace Gandalf.Contracts.DividendPool
         public ECKeyPair TomKeyPair;
         public Address Kitty;
         public ECKeyPair KittyKeyPair;
-
+        
         public const string LockedToken = "ISTAR";
         public const string RewardToken1 = "USDT";
-        public const string RewardToken2 = "ELF";
+        public const string RewardToken2 = "AAAE";
 
         private async Task<DividendPoolContractContainer.DividendPoolContractStub> Initialize()
         {
@@ -35,7 +35,7 @@ namespace Gandalf.Contracts.DividendPool
             await stub.Initialize.SendAsync(new InitializeInput
             {
                 Owner = Owner,
-                Cycle = 50
+                Cycle = 100
             });
             await CreateToken();
             return stub;
@@ -44,50 +44,90 @@ namespace Gandalf.Contracts.DividendPool
 
         private async Task CreateToken()
         {
-            var istarStub = GetTokenContractStub(OwnerKeyPair);
-            await istarStub.Create.SendAsync(new CreateInput
+            var tokenStub = GetTokenContractStub(OwnerKeyPair);
+            await tokenStub.Create.SendAsync(new CreateInput
             {
-                Decimals = 10,
+                Decimals = 5,
                 Symbol = LockedToken,
                 Issuer = Owner,
                 IsBurnable = true,
                 TokenName = LockedToken,
-                TotalSupply = 10000000000
+                TotalSupply = 100000000000
             });
-            await istarStub.Issue.SendAsync(new IssueInput
+            await tokenStub.Issue.SendAsync(new IssueInput
             {
-                Amount = 10000000000,
+                Amount = 100000000000,
                 Symbol = LockedToken,
                 To = Owner
             });
 
-            await istarStub.Transfer.SendAsync(new TransferInput
+            await tokenStub.Transfer.SendAsync(new TransferInput
             {
                 Amount = 60000000000,
                 Symbol = LockedToken,
                 To = Tom
             });
 
-            await istarStub.Transfer.SendAsync(new TransferInput
+            await tokenStub.Transfer.SendAsync(new TransferInput
             {
                 Amount = 20000000000,
                 Symbol = LockedToken,
                 To = Kitty
             });
 
-            var tomBalance = await istarStub.GetBalance.CallAsync(new GetBalanceInput
+            var tomBalance = await tokenStub.GetBalance.CallAsync(new GetBalanceInput
             {
                 Owner = Tom,
                 Symbol = LockedToken
             });
             tomBalance.Balance.ShouldBe(60000000000);
 
-            var kittyBalance = await istarStub.GetBalance.CallAsync(new GetBalanceInput
+            var kittyBalance = await tokenStub.GetBalance.CallAsync(new GetBalanceInput
             {
                 Owner = Kitty,
                 Symbol = LockedToken
             });
             kittyBalance.Balance.ShouldBe(20000000000);
+
+            await tokenStub.Create.SendAsync(new CreateInput
+            {
+                Decimals = 5,
+                Symbol = RewardToken1,
+                Issuer = Owner,
+                IsBurnable = true,
+                TotalSupply = 10000000000,
+                TokenName = RewardToken1
+            });
+            await tokenStub.Issue.SendAsync(new IssueInput
+            {
+                Amount = 10000000000,
+                Symbol = RewardToken1,
+                To = Owner
+            });
+                
+            var usdt = await tokenStub.GetBalance.CallAsync(new GetBalanceInput
+            {
+                Owner = Owner,
+                Symbol = RewardToken1
+            });
+            usdt.Balance.ShouldBe(10000000000);
+
+            await tokenStub.Create.SendAsync(new CreateInput
+            {
+                Decimals = 2,
+                Issuer = Owner,
+                Symbol = RewardToken2,
+                IsBurnable = true,
+                TokenName = RewardToken2,
+                TotalSupply = 10000000000,
+            });
+            await tokenStub.Issue.SendAsync(new IssueInput
+            {
+                Amount = 10000000000,
+                Symbol = RewardToken2,
+                To = Owner
+            });
+            
         }
     }
 }

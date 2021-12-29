@@ -39,7 +39,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 for (int i = 0; i < tokenList.Count; i++)
                 {
                     var tokenSymbol = tokenList[i];
-                    var amount = GetUserReward(input.Pid,pool, user, tokenSymbol, multiplier);
+                    var amount = GetUserReward(input.Pid, pool, user, tokenSymbol, multiplier);
                     pendingOutput.Tokens.Add(tokenSymbol);
                     pendingOutput.Amounts.Add(amount);
                 }
@@ -52,9 +52,10 @@ namespace Gandalf.Contracts.DividendPoolContract
                     pendingOutput.Amounts.Add(new BigIntValue(0));
                 }
             }
+
             return pendingOutput;
         }
-        
+
         /**
          * GetTokenListLength
          */
@@ -65,7 +66,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.TokenList.Value.Tokens.Count
             };
         }
-        
+
         /**
          * IsTokenList
          */
@@ -83,9 +84,8 @@ namespace Gandalf.Contracts.DividendPoolContract
         public override Address Owner(Empty input)
         {
             return State.Owner.Value;
-
         }
-        
+
         /**
          *  Get token by index from token list.
          */
@@ -96,7 +96,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.TokenList.Value.Tokens[input.Value]
             };
         }
-        
+
         /**
          *  Get perBlock from state
          */
@@ -104,7 +104,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return State.PerBlock[input.Value];
         }
-        
+
         /**
          *  Get poolInfo by pid  address form state.
          */
@@ -112,7 +112,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return State.PoolInfo.Value.PoolList[input.Value];
         }
-        
+
         /**
          * Get user Info
          */
@@ -120,7 +120,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             return State.UserInfo[input.Pid][input.User];
         }
-        
+
         /**
          * Get totalAllocPoint
          */
@@ -131,7 +131,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.TotalAllocPoint.Value
             };
         }
-        
+
         /**
          * Get startBlock.
          */
@@ -142,7 +142,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.StartBlock.Value
             };
         }
-        
+
         /**
          *  Get endBlock.
          */
@@ -153,7 +153,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.EndBlock.Value
             };
         }
-        
+
         /**
          * Get Cycle.
          */
@@ -164,7 +164,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 Value = State.Cycle.Value
             };
         }
-        
+
         /**
          *  Get RewardDebt.
          */
@@ -192,10 +192,11 @@ namespace Gandalf.Contracts.DividendPoolContract
                 .Div(State.TotalAllocPoint.Value);
             var tokenMultiplier = GetMultiplier(token);
             var accPerShare = State.AccPerShare[pid][token].Add(
-                Convert.ToInt64((tokenMultiplier.Mul(reward).Div(pool.TotalAmount)).ToString())
+                tokenMultiplier.Mul(reward).Div(pool.TotalAmount)
             );
 
-            var amount = user.Amount.Mul(accPerShare).Div(tokenMultiplier).Sub(State.RewardDebt[pid][Context.Sender][token]);
+            var amount = user.Amount.Mul(accPerShare).Div(tokenMultiplier)
+                .Sub(State.RewardDebt[pid][Context.Sender][token]);
             return amount;
         }
     }

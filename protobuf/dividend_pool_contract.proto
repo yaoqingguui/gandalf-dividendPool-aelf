@@ -39,7 +39,7 @@ service DividendPoolContract {
 
   rpc SetCycle(google.protobuf.Int32Value) returns (google.protobuf.Empty){}
   // Add a new lp to the pool. Can only be called by the owner.
-  rpc Add(AddTokenInput) returns(google.protobuf.Empty){}
+  rpc Add(AddPoolInput) returns(google.protobuf.Empty){}
   // Update the given pool's  allocation point. Can only be called by the owner.
   rpc Set(SetPoolInput) returns(google.protobuf.Empty){}
   // Update reward variables for all pools. Be careful of gas spending!
@@ -161,7 +161,7 @@ message NewRewardInput{
   int64 start_block = 4;
 }
 
-message AddTokenInput{
+message AddPoolInput{
   int64 allocation_point = 1;
   string token_symbol = 2;
   bool with_update = 3;
@@ -188,6 +188,7 @@ message Harvest{
   aelf.Address to = 1;
   aelf.BigIntValue amount = 2;
   string token = 3;
+  int32 pid = 4;
 }
 
 message Deposit{
@@ -241,7 +242,6 @@ message SetPool{
 //struct
 message UserInfoStruct{
   aelf.BigIntValue amount = 1;
-//  map<string, aelf.BigIntValue> reward_debt = 2;
 }
 
 message PoolInfoStruct{
