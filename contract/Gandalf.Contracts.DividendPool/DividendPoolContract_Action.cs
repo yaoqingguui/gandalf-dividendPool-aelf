@@ -190,7 +190,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                     State.AccPerShare[input.Pid][token] = State.AccPerShare[input.Pid][token] ?? new BigIntValue(0);
                     State.RewardDebt[input.Pid][Context.Sender][token] =
                         State.RewardDebt[input.Pid][Context.Sender][token] ?? new BigIntValue(0);
-                    
+
                     var pendingAmount = user.Amount
                         .Mul(State.AccPerShare[input.Pid][token])
                         .Div(tokenMultiplier)

@@ -39,7 +39,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 for (int i = 0; i < tokenList.Count; i++)
                 {
                     var tokenSymbol = tokenList[i];
-                    var amount = GetUserReward(input.Pid, pool, user, tokenSymbol, multiplier);
+                    var amount = GetUserReward(input.Pid, pool, user, tokenSymbol, multiplier,input.User);
                     pendingOutput.Tokens.Add(tokenSymbol);
                     pendingOutput.Amounts.Add(amount);
                 }
@@ -184,7 +184,7 @@ namespace Gandalf.Contracts.DividendPoolContract
         private BigIntValue GetUserReward(int pid, PoolInfoStruct pool,
             UserInfoStruct user,
             string token,
-            long multiplier)
+            long multiplier, Address userAddress)
         {
             var reward = State.PerBlock[token]
                 .Mul(multiplier)
@@ -196,7 +196,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             );
 
             var amount = user.Amount.Mul(accPerShare).Div(tokenMultiplier)
-                .Sub(State.RewardDebt[pid][Context.Sender][token]);
+                .Sub(State.RewardDebt[pid][userAddress][token]);
             return amount;
         }
     }

@@ -4,8 +4,7 @@ using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.Kernel;
 using AElf.Kernel.Blockchain.Application;
-using AElf.Kernel.SmartContract.Application;
-using AElf.Sdk.CSharp;
+using AElf.Sdk.CSharp.State;
 using Gandalf.Contracts.DividendPoolContract;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.DependencyInjection;
@@ -150,7 +149,7 @@ namespace Gandalf.Contracts.DividendPool
                 Value = 0
             });
             poolInfo.TotalAmount.Value.ShouldBe("20000");
-            poolInfo.LastRewardBlock.ShouldBe(16);
+            poolInfo.LastRewardBlock.ShouldBe(18);
             tomUserInfo = await tomDivStub.UserInfo.CallAsync(new UserInfoInput
             {
                 Pid = 0,
@@ -331,13 +330,213 @@ namespace Gandalf.Contracts.DividendPool
             await adminDivStub.NewReward.SendAsync(input);
         }
         
+        [Fact]
+        public async Task Usdt_Dividend_Single_Person_Test()
+        {
+            var allocPoint = 10;
+            var adminDivStub = await Initialize();
+            var tomTokenStub = GetTokenContractStub(TomKeyPair);
+            var tomDivStub = GetDividendPoolContractStub(TomKeyPair);
+
+            await adminDivStub.Add.SendAsync(new AddPoolInput
+            {
+                AllocationPoint = allocPoint,
+                TokenSymbol = LockedToken,
+                WithUpdate = false
+            });
+            await adminDivStub.AddToken.SendAsync(new Token
+            {
+                TokenSymbol = RewardToken1,
+            });
+
+            var amount = 600000000;
+            var perBlockAmount = 1000;
+            var adminTokenStub = GetTokenContractStub(OwnerKeyPair);
+            await adminTokenStub.Approve.SendAsync(new ApproveInput
+            {
+                Amount = amount,
+                Spender = DAppContractAddress,
+                Symbol = RewardToken1
+            });
+
+            var newRewardInput = new NewRewardInput();
+            newRewardInput.Tokens.Add(RewardToken1);
+            newRewardInput.Amounts.Add(amount);
+            newRewardInput.PerBlocks.Add(perBlockAmount);
+
+            var currentBlockHeight = await GetCurrentBlockHeight();
+            var startBlock = currentBlockHeight.Add(2);
+            newRewardInput.StartBlock = startBlock;
+            await adminDivStub.NewReward.SendAsync(newRewardInput);
+
+            await tomTokenStub.Approve.SendAsync(new ApproveInput
+            {
+                Amount = 50000,
+                Spender = DAppContractAddress,
+                Symbol = LockedToken
+            });
+
+            await tomDivStub.Deposit.SendAsync(new TokenOptionInput
+            {
+                Amount = 50000,
+                Pid = 0
+            });
+
+            var depositBlockHeight = await GetCurrentBlockHeight();
+            currentBlockHeight = await BlindJ8Trade(50);
+
+            // check pending
+            var pending = await tomDivStub.Pending.CallAsync(new PendingInput
+            {
+                Pid = 0,
+                User = Tom
+            });
+            (await adminDivStub.IsTokenList.CallAsync(new Token
+            {
+                TokenSymbol = pending.Tokens[0]
+            })).Value.ShouldBe(true);
+
+            var reward = currentBlockHeight.Sub(depositBlockHeight).Add(1).Mul(perBlockAmount);
+            pending.Amounts[0].ShouldBe(reward);
+        }
+        
+        [Fact]
+        public async Task Dividend_Single_Person_Multi_Tokens()
+        {
+            var token1PerBlockAmount = 1000;
+            var token2PerBlockAmount = 2000;
+            var adminDivStub = await Initialize();
+            var tomTokenStub = GetTokenContractStub(TomKeyPair);
+            var tomDivStub = GetDividendPoolContractStub(TomKeyPair);
+            await AddPool(adminDivStub, 10);
+            await AddToken(adminDivStub, RewardToken1);
+            await AddToken(adminDivStub, RewardToken2);
+
+            var newRewardInput = new NewRewardInput();
+            newRewardInput.Tokens.Add(RewardToken1);
+            newRewardInput.Amounts.Add(600000000);
+            newRewardInput.PerBlocks.Add(token1PerBlockAmount);
+            
+            newRewardInput.Tokens.Add(RewardToken2);
+            newRewardInput.Amounts.Add(100000000);
+            newRewardInput.PerBlocks.Add(token2PerBlockAmount);
+            newRewardInput.StartBlock = await GetCurrentBlockHeight() + 2;
+
+            var tokenOptionInput = new TokenOptionInput
+            {
+                Amount = 50000,
+                Pid = 0
+            };
+
+
+            await deposit(tomTokenStub, tomDivStub, tokenOptionInput, LockedToken);
+            var depositHeight = await GetCurrentBlockHeight();
+            
+            await NewReward(newRewardInput);
+            await BlindJ8Trade(50);
+
+            var currentBlockHeight = await GetCurrentBlockHeight();
+
+            var pending = await tomDivStub.Pending.CallAsync(new PendingInput
+            {
+                Pid = 0,
+                User = Tom
+            });
+
+            var token1Expect = currentBlockHeight.Sub(depositHeight).Add(1).Mul(token1PerBlockAmount);
+            var token2Expect = currentBlockHeight.Sub(depositHeight).Add(1).Mul(token2PerBlockAmount);
+            pending.Amounts[0].ShouldBe(token1Expect);
+            pending.Amounts[1].ShouldBe(token2Expect);
+        }
         
         
-        
-        
-        
-        
-        
+        [Fact]
+        public async Task Dividend_Multi_Person_Single_Pool()
+        {
+            var perBlockAmount = 1000;
+            var adminDivStub = await Initialize();
+            var tomTokenStub = GetTokenContractStub(TomKeyPair);
+            var tomDivStub = GetDividendPoolContractStub(TomKeyPair);
+            
+            await AddPool(adminDivStub, 10);
+            await AddToken(adminDivStub, RewardToken1);
+            var newRewardInput = new NewRewardInput();
+            newRewardInput.Amounts.Add(600000000);
+            newRewardInput.Tokens.Add(RewardToken1);
+            newRewardInput.PerBlocks.Add(perBlockAmount);
+            var currentBlockHeight = await GetCurrentBlockHeight();
+            newRewardInput.StartBlock = currentBlockHeight.Add(2);
+            await NewReward(newRewardInput);
+
+            var tom = new TokenOptionInput
+            {
+                Amount = 50000,
+                Pid = 0
+            };
+            await deposit(tomTokenStub, tomDivStub,tom,LockedToken);
+            var tomDepositHeight = await GetCurrentBlockHeight();
+            var tokenKittyStub = GetTokenContractStub(KittyKeyPair);
+            var dividendKittyStub = GetDividendPoolContractStub(KittyKeyPair);
+            var kittyOption = new TokenOptionInput
+            {
+                Amount = 80000,
+                Pid = 0
+            };
+            await BlindJ8Trade(40);
+            await deposit(tokenKittyStub, dividendKittyStub, kittyOption, LockedToken);
+            var kittyDepositHeight = await GetCurrentBlockHeight();
+            currentBlockHeight = await BlindJ8Trade(30);
+            
+            // check pending
+            var tomPending = await adminDivStub.Pending.CallAsync(new PendingInput
+            {
+                Pid = 0,
+                User = Tom
+            });
+            
+            var kittyPending = await adminDivStub.Pending.CallAsync(new PendingInput
+            {
+                Pid = 0,
+                User = Kitty
+            });
+
+            var tomExpect = kittyDepositHeight.Sub(tomDepositHeight).Mul(perBlockAmount)+currentBlockHeight.Sub(kittyDepositHeight).Add(1).Mul(perBlockAmount).Mul(50000).Div(50000+80000);
+            tomPending.Amounts[0].ShouldBe(tomExpect);
+            var kittyExpect = currentBlockHeight.Sub(kittyDepositHeight).Add(1).Mul(perBlockAmount).Mul(80000).Div(80000+50000);
+            kittyPending.Amounts[0].ShouldBe(kittyExpect);
+        }
+
+        private async Task deposit(TokenContractContainer.TokenContractStub tokenStub,
+            DividendPoolContractContainer.DividendPoolContractStub divStub, TokenOptionInput tokenOptionInput,
+            string lockedToken)
+        {
+            await tokenStub.Approve.SendAsync(new ApproveInput
+            {
+                Amount = long.Parse(tokenOptionInput.Amount.Value),
+                Spender = DAppContractAddress,
+                Symbol = lockedToken
+            });
+
+            await divStub.Deposit.SendAsync(tokenOptionInput);
+        }
+
+
+        private async Task NewReward(NewRewardInput input)
+        {
+            var tokenContractStub = GetTokenContractStub(OwnerKeyPair);
+            var dividendPoolContractStub = GetDividendPoolContractStub(OwnerKeyPair);
+            for (int i = 0; i < input.Tokens.Count; i++)
+            {
+                await tokenContractStub.Approve.SendAsync(new ApproveInput
+                {
+                    Amount = long.Parse(input.Amounts[i].Value),
+                    Spender = DAppContractAddress,
+                    Symbol = input.Tokens[i]
+                });
+            }
+
+            await dividendPoolContractStub.NewReward.SendAsync(input);
+        }
         private async Task<long> BlindJ8Trade(int skipBlocks)
         {
             var tokenStub = GetTokenContractStub(OwnerKeyPair);
