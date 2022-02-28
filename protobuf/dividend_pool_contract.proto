@@ -181,6 +181,7 @@ message UpdatePool{
   string token =2;
   aelf.BigIntValue reward =3;
   aelf.BigIntValue acc_per_share = 4;
+  int64 block_heigh=5;
 }
 
 message Harvest{

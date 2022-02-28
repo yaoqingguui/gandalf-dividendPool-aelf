@@ -18,7 +18,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             AssertSenderIsOwner();
             Assert(input.TokenSymbol != null, "Invalid token symbol.");
             var tokenList = State.TokenList.Value;
-            Assert(!tokenList.Tokens.Contains(input.TokenSymbol),"Token has Added.");
+            Assert(!tokenList.Tokens.Contains(input.TokenSymbol), "Token has Added.");
             tokenList.Tokens.Add(input.TokenSymbol);
             State.TokenList.Value = tokenList;
             State.PerBlock[input.TokenSymbol] = new BigIntValue(0);
@@ -37,9 +37,9 @@ namespace Gandalf.Contracts.DividendPoolContract
         {
             AssertSenderIsOwner();
             var endBlock = State.EndBlock.Value;
-            Assert(endBlock != null, "Not config end block.");
+            Assert(endBlock > 0, "Not config end block.");
             Assert(Context.CurrentHeight > endBlock && input.StartBlock > endBlock, "Not finished");
-            // todo -> massUpdatePools()
+            MassUpdatePools(new Empty());
             var tokenLength = input.Tokens.Count;
             for (int i = 0; i < tokenLength; i++)
             {
@@ -146,7 +146,7 @@ namespace Gandalf.Contracts.DividendPoolContract
             AssertSenderIsOwner();
             if (input.WithUpdate)
             {
-                // TODO MassUpdatePools();
+                MassUpdatePools(new Empty());
             }
 
             State.TotalAllocPoint.Value = State.TotalAllocPoint.Value
@@ -226,7 +226,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                     To = Context.Self,
                     Amount = Convert.ToInt64(input.Amount.Value)
                 });
-                
+
                 user.Amount = user.Amount.Add(input.Amount);
                 pool.TotalAmount = pool.TotalAmount.Add(input.Amount);
             }
@@ -382,6 +382,7 @@ namespace Gandalf.Contracts.DividendPoolContract
                 {
                     continue;
                 }
+
                 var tokenMultiplier = GetMultiplier(token);
                 State.AccPerShare[pid][token] = State.AccPerShare[pid][token]
                     .Add(
@@ -393,7 +394,8 @@ namespace Gandalf.Contracts.DividendPoolContract
                     Pid = pid,
                     Reward = reward,
                     Token = token,
-                    AccPerShare = State.AccPerShare[pid][token]
+                    AccPerShare = State.AccPerShare[pid][token],
+                    BlockHeigh = number
                 });
             }
 
